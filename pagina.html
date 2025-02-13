@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autocompletamento Località con Risorse Online</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; }
+        .autocomplete-suggestions { 
+            border: 1px solid #ccc;
+            max-height: 150px;
+            overflow-y: auto;
+            position: absolute;
+            background: white;
+            width: 200px;
+        }
+        .suggestion { padding: 10px; cursor: pointer; }
+        .suggestion:hover { background: #f0f0f0; }
+        .filiale { font-size: 24px; font-weight: bold; color: red; }
+    </style>
+</head>
+<body>
+    <h2>Trova la filiale per la tua località</h2>
+    <input type="text" id="search" placeholder="Inserisci località" oninput="showSuggestions()">
+    <div id="suggestions" class="autocomplete-suggestions"></div>
+    <h3>Filiale Associata:</h3>
+    <p id="filiale" class="filiale"></p>
+    
+    <script>
+        function normalizeString(str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+        }
+        
+        let localitaData = [];
+        
+        function loadCSVFromURL() {
+            fetch("https://raw.githubusercontent.com/giobarsa/localita/refs/heads/main/localita.csv")
+                .then(response => response.text())
+                .then(text => {
+                    const rows = text.split("\n").slice(1);
+                    localitaData = rows.map(row => {
+                        const values = row.split(",");
+                        return values.length >= 3 ? {
+                            localita: values[0].trim(),
+                            filiale: values[2].trim()
+                        } : null;
+                    }).filter(item => item);
+                    console.log("Dati caricati da risorsa online");
+                })
+                .catch(error => console.error("Errore nel caricamento del CSV:", error));
+        }
+        
+        function showSuggestions() {
+            let input = normalizeString(document.getElementById("search").value);
+            let suggestionsDiv = document.getElementById("suggestions");
+            suggestionsDiv.innerHTML = "";
+            
+            if (input.length === 0) return;
+            
+            let matches = localitaData.filter(item => normalizeString(item.localita).includes(input));
+            
+            matches.forEach(match => {
+                let div = document.createElement("div");
+                div.classList.add("suggestion");
+                div.innerText = match.localita;
+                div.onclick = () => selectLocalita(match);
+                suggestionsDiv.appendChild(div);
+            });
+        }
+        
+        function selectLocalita(match) {
+            document.getElementById("search").value = match.localita;
+            document.getElementById("filiale").innerText = `Filiale: ${match.filiale || "Nessuna"}`;
+            document.getElementById("suggestions").innerHTML = "";
+        }
+
+        document.addEventListener("DOMContentLoaded", loadCSVFromURL);
+    </script>
+</body>
+</html>
